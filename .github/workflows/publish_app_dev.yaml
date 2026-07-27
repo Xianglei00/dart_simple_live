@@ -33,7 +33,7 @@ jobs:
           echo "storeFile=${{ steps.android_keystore.outputs.filePath }}" > simple_live_app/android/key.properties
           echo "storePassword='asasas'" >> simple_live_app/android/key.properties
           echo "keyPassword='asasas'" >> simple_live_app/android/key.properties
-          echo "keyAlias='cn'" >> simple_live_app/android/key.properties
+          echo "keyAlias='release_key'" >> simple_live_app/android/key.properties
 
       # 设置JAVA环境
       - uses: actions/setup-java@v4
