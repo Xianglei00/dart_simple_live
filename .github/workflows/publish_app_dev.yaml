@@ -34,6 +34,19 @@ jobs:
           echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" >> simple_live_app/android/key.properties
           echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> simple_live_app/android/key.properties
           echo "keyAlias=release_key" >> simple_live_app/android/key.properties
+      # 调试：打印环境变量和密码
+      - name: Debug - Print passwords and env
+        run: |
+          echo "=== Keystore Path ==="
+          echo "${{ steps.android_keystore.outputs.filePath }}"
+          echo "=== KEYSTORE_PASSWORD ==="
+          echo "${{ secrets.KEYSTORE_PASSWORD }}"
+          echo "=== KEY_PASSWORD ==="
+          echo "${{ secrets.KEY_PASSWORD }}"
+          echo "=== key.properties content ==="
+          cat simple_live_app/android/key.properties
+          echo "=== Keystore File Exists ==="
+          ls -lh "${{ steps.android_keystore.outputs.filePath }}"
 
       # 设置JAVA环境
       - uses: actions/setup-java@v4
