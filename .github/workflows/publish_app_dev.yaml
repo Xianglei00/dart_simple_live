@@ -31,8 +31,8 @@ jobs:
       - name: Create key.properties
         run: |
           echo "storeFile=${{ steps.android_keystore.outputs.filePath }}" > simple_live_app/android/key.properties
-          echo "storePassword=asasas" >> simple_live_app/android/key.properties
-          echo "keyPassword=asasas" >> simple_live_app/android/key.properties
+          echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" >> simple_live_app/android/key.properties
+          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> simple_live_app/android/key.properties
           echo "keyAlias=release_key" >> simple_live_app/android/key.properties
 
       # 设置JAVA环境
