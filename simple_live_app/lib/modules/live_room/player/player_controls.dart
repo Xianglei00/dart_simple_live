@@ -44,14 +44,11 @@ Widget buildFullControls(
 ) {
   var padding = MediaQuery.of(videoState.context).padding;
   GlobalKey volumeButtonkey = GlobalKey();
-  return Listener(
-    onPointerDown: controller.onScalePointerDown,
-    onPointerUp: controller.onScalePointerUp,
-    child: GestureDetector(
-      onScaleStart: controller.onScaleStart,
-      onScaleUpdate: controller.onScaleUpdate,
-      onScaleEnd: controller.onScaleEnd,
-      child: DragToMoveArea(
+  return GestureDetector(
+    onScaleStart: controller.onScaleStart,
+    onScaleUpdate: controller.onScaleUpdate,
+    onScaleEnd: controller.onScaleEnd,
+    child: DragToMoveArea(
       child: Stack(
       children: [
         Container(),
@@ -94,9 +91,7 @@ Widget buildFullControls(
               }
               showFollowUser(controller);
             },
-            onVerticalDragStart: controller.onVerticalDragStart,
-            onVerticalDragUpdate: controller.onVerticalDragUpdate,
-            onVerticalDragEnd: controller.onVerticalDragEnd,
+
             child: MouseRegion(
               onHover: (PointerHoverEvent event) {
                 controller.onHover(event, videoState.context);
@@ -402,7 +397,6 @@ Widget buildFullControls(
         ),
  
         ],
-      ),
       ),
     ),
   );

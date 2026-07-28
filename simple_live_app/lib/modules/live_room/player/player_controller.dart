@@ -575,7 +575,6 @@ mixin PlayerGestureControlMixin
 
   bool verticalDragging = false;
   bool leftVerticalDrag = false;
-  int _activePointerCount = 0;
   var _currentVolume = 0.0;
   var _currentBrightness = 1.0;
   var verStartPosition = 0.0;
@@ -617,8 +616,6 @@ mixin PlayerGestureControlMixin
       return;
     }
     if (verticalDragging == false) return;
-    // 多指触屏时不做亮度/音量调节
-    if (_activePointerCount >= 2) return;
     if (!Platform.isAndroid && !Platform.isIOS) {
       return;
     }
@@ -710,19 +707,6 @@ mixin PlayerGestureControlMixin
     showGestureTip.value = false;
   }
 
-  /// 追踪当前触点数量
-  void onScalePointerDown(PointerDownEvent event) {
-    _activePointerCount++;
-    // 多指触屏时取消亮度/音量调节
-    if (_activePointerCount >= 2 && verticalDragging) {
-      verticalDragging = false;
-      showGestureTip.value = false;
-    }
-  }
-
-  void onScalePointerUp(PointerUpEvent event) {
-    _activePointerCount = (_activePointerCount - 1).clamp(0, 99);
-  }
 }
 
 class PlayerController extends BaseController
