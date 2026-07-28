@@ -254,33 +254,41 @@ class LiveRoomPage extends GetView<LiveRoomController> {
       boxFit = BoxFit.contain;
       aspectRatio = 4 / 3;
     }
+    final videoChild = Video(
+      key: controller.globalPlayerKey,
+      controller: controller.videoController,
+      pauseUponEnteringBackgroundMode:
+          AppSettingsController.instance.playerAutoPause.value,
+      resumeUponEnteringForegroundMode:
+          AppSettingsController.instance.playerAutoPause.value,
+      controls: (state) {
+        return playerControls(state, controller);
+      },
+      aspectRatio: aspectRatio,
+      fit: boxFit,
+      wakelock: false,
+    );
     return Stack(
       children: [
-        Obx(() {
-          var scale = controller.videoScale.value;
-          var offset = controller.videoOffset.value;
-          return Transform(
-            alignment: Alignment.center,
-            transform: Matrix4.identity()
-              ..translate(offset.dx, offset.dy)
-              ..scale(scale),
-            child: Video(
-              key: controller.globalPlayerKey,
-              controller: controller.videoController,
-              pauseUponEnteringBackgroundMode:
-                  AppSettingsController.instance.playerAutoPause.value,
-              resumeUponEnteringForegroundMode:
-                  AppSettingsController.instance.playerAutoPause.value,
-              controls: (state) {
-                return playerControls(state, controller);
-              },
-              aspectRatio: aspectRatio,
-              fit: boxFit,
-              // 自己实现
-              wakelock: false,
-            ),
-          );
-        }),
+        // 全屏时外层包裹缩放手势，覆盖整个播放器区域（含 controls 层）
+        if (controller.fullScreenState.value)
+          GestureDetector(
+            onScaleStart: controller.onScaleStart,
+            onScaleUpdate: controller.onScaleUpdate,
+            onScaleEnd: controller.onScaleEnd,
+            child: Obx(() {
+              return Transform(
+                alignment: Alignment.center,
+                transform: Matrix4.identity()
+                  ..translate(
+                      controller.videoOffset.value.dx, controller.videoOffset.value.dy)
+                  ..scale(controller.videoScale.value),
+                child: videoChild,
+              );
+            }),
+          )
+        else
+          videoChild,
         Obx(
           () => Visibility(
             visible: !controller.liveStatus.value,
