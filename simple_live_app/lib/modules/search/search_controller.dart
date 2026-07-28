@@ -25,9 +25,6 @@ class AppSearchController extends GetxController
       }
 
       index = currentIndex;
-      // if (Sites.supportSites[index].id == Constant.kDouyin) {
-      //   return;
-      // }
 
       var controller =
           Get.find<SearchListController>(tag: Sites.supportSites[index].id);
@@ -47,32 +44,37 @@ class AppSearchController extends GetxController
   @override
   void onInit() {
     for (var site in Sites.supportSites) {
-      // if (site.id == Constant.kDouyin) {
-      //   Get.put(DouyinSearchController(site));
-      // } else {
       Get.put(
         SearchListController(site),
         tag: site.id,
       );
-      //}
     }
 
     super.onInit();
   }
 
-  /// 尝试解析抖音直播间链接，成功则直接跳转并返回 true
+  /// 尝试解析抖音直播间链接或房间号，成则直接跳转并返回 true
   bool _tryOpenDouyinLink(String input) {
-    // 匹配 https://live.douyin.com/123456 或 live.douyin.com/123456
-    var regExp = RegExp(r'(?:https?://)?live\.douyin\.com/(\d+)');
-    var match = regExp.firstMatch(input.trim());
-    if (match != null) {
-      var roomId = match.group(1)!;
-      var douyinSite = Sites.allSites[Constant.kDouyin];
-      if (douyinSite != null) {
-        AppNavigator.toLiveRoomDetail(site: douyinSite, roomId: roomId);
-        return true;
-      }
+    var text = input.trim();
+    var douyinSite = Sites.allSites[Constant.kDouyin];
+    if (douyinSite == null) return false;
+
+    // 匹配完整链接: https://live.douyin.com/123456
+    var urlReg = RegExp(r'(?:https?://)?live\.douyin\.com/(\d+)');
+    var urlMatch = urlReg.firstMatch(text);
+    if (urlMatch != null) {
+      AppNavigator.toLiveRoomDetail(
+          site: douyinSite, roomId: urlMatch.group(1)!);
+      return true;
     }
+
+    // 当前 Tab 为抖音时，支持直接输入纯数字房间号
+    if (Sites.supportSites[index].id == Constant.kDouyin &&
+        RegExp(r'^\d+$').hasMatch(text)) {
+      AppNavigator.toLiveRoomDetail(site: douyinSite, roomId: text);
+      return true;
+    }
+
     return false;
   }
 
@@ -85,23 +87,14 @@ class AppSearchController extends GetxController
       return;
     }
     for (var site in Sites.supportSites) {
-      // if (site.id == Constant.kDouyin) {
-      //   var controller = Get.find<DouyinSearchController>();
-      //   controller.keyword = searchController.text;
-      //   controller.searchMode.value = searchMode.value;
-      //   controller.reloadWebView();
-      // } else {
       var controller = Get.find<SearchListController>(tag: site.id);
       controller.clear();
       controller.keyword = searchController.text;
       controller.searchMode.value = searchMode.value;
-      //}
     }
-    // if (Sites.supportSites[index].id != Constant.kDouyin) {
     var controller =
         Get.find<SearchListController>(tag: Sites.supportSites[index].id);
     controller.refreshData();
-    //}
   }
 
   @override

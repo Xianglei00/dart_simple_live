@@ -256,14 +256,14 @@ class LiveRoomPage extends GetView<LiveRoomController> {
     }
     return Stack(
       children: [
-        Obx(() {
-          var scale = controller.videoScale.value;
-          var offset = controller.videoOffset.value;
-          return GestureDetector(
-            onScaleStart: controller.onScaleStart,
-            onScaleUpdate: controller.onScaleUpdate,
-            onScaleEnd: controller.onScaleEnd,
-            child: Transform(
+        GestureDetector(
+          onScaleStart: controller.onScaleStart,
+          onScaleUpdate: controller.onScaleUpdate,
+          onScaleEnd: controller.onScaleEnd,
+          child: Obx(() {
+            var scale = controller.videoScale.value;
+            var offset = controller.videoOffset.value;
+            return Transform(
               alignment: Alignment.center,
               transform: Matrix4.identity()
                 ..translate(offset.dx, offset.dy)
@@ -283,9 +283,9 @@ class LiveRoomPage extends GetView<LiveRoomController> {
                 // 自己实现
                 wakelock: false,
               ),
-            ),
-          );
-        }),
+            );
+          }),
+        ),
         Obx(
           () => Visibility(
             visible: !controller.liveStatus.value,
