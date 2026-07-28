@@ -44,8 +44,15 @@ Widget buildFullControls(
 ) {
   var padding = MediaQuery.of(videoState.context).padding;
   GlobalKey volumeButtonkey = GlobalKey();
-  return DragToMoveArea(
-    child: Stack(
+  return Listener(
+    onPointerDown: controller.onScalePointerDown,
+    onPointerUp: controller.onScalePointerUp,
+    child: GestureDetector(
+      onScaleStart: controller.onScaleStart,
+      onScaleUpdate: controller.onScaleUpdate,
+      onScaleEnd: controller.onScaleEnd,
+      child: DragToMoveArea(
+      child: Stack(
       children: [
         Container(),
         buildDanmuView(videoState, controller),
@@ -394,32 +401,9 @@ Widget buildFullControls(
           ),
         ),
  
-      // 重置缩放按钮（仅放大时显示）
-      Obx(
-        () => Visibility(
-          visible: controller.videoScale.value > 1.01,
-          child: Positioned(
-            right: 12,
-            top: 12,
-            child: GestureDetector(
-              onTap: controller.resetVideoScale,
-              child: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Icon(
-                  Icons.fit_screen,
-                  color: Colors.white,
-                  size: 20,
-                ),
-              ),
-            ),
-          ),
-        ),
+        ],
       ),
-     ],
+      ),
     ),
   );
 }
