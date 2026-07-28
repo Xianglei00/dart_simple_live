@@ -393,7 +393,33 @@ Widget buildFullControls(
             ),
           ),
         ),
-      ],
+ 
+      // 重置缩放按钮（仅放大时显示）
+      Obx(
+        () => Visibility(
+          visible: controller.videoScale.value > 1.01,
+          child: Positioned(
+            right: 12,
+            top: 12,
+            child: GestureDetector(
+              onTap: controller.resetVideoScale,
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Icon(
+                  Icons.fit_screen,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+     ],
     ),
   );
 }
@@ -636,6 +662,32 @@ Widget buildControls(
               child: Text(
                 controller.gestureTipText.value,
                 style: const TextStyle(fontSize: 18, color: Colors.white),
+              ),
+            ),
+          ),
+        ),
+      ),
+
+      // 重置缩放按钮（仅放大时显示）
+      Obx(
+        () => Visibility(
+          visible: controller.videoScale.value > 1.01,
+          child: Positioned(
+            right: 12,
+            top: 12,
+            child: GestureDetector(
+              onTap: controller.resetVideoScale,
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Icon(
+                  Icons.fit_screen,
+                  color: Colors.white,
+                  size: 20,
+                ),
               ),
             ),
           ),

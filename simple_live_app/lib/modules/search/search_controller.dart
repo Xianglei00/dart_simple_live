@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:get/get.dart';
+import 'package:simple_live_app/app/constant.dart';
 import 'package:simple_live_app/app/sites.dart';
 import 'package:simple_live_app/modules/search/search_list_controller.dart';
+import 'package:simple_live_app/routes/app_navigation.dart';
 
 class AppSearchController extends GetxController
     with GetSingleTickerProviderStateMixin {
@@ -58,8 +60,28 @@ class AppSearchController extends GetxController
     super.onInit();
   }
 
+  /// 尝试解析抖音直播间链接，成功则直接跳转并返回 true
+  bool _tryOpenDouyinLink(String input) {
+    // 匹配 https://live.douyin.com/123456 或 live.douyin.com/123456
+    var regExp = RegExp(r'(?:https?://)?live\.douyin\.com/(\d+)');
+    var match = regExp.firstMatch(input.trim());
+    if (match != null) {
+      var roomId = match.group(1)!;
+      var douyinSite = Sites.allSites[Constant.kDouyin];
+      if (douyinSite != null) {
+        AppNavigator.toLiveRoomDetail(site: douyinSite, roomId: roomId);
+        return true;
+      }
+    }
+    return false;
+  }
+
   void doSearch() {
     if (searchController.text.isEmpty) {
+      return;
+    }
+    // 尝试识别抖音直播间链接
+    if (_tryOpenDouyinLink(searchController.text)) {
       return;
     }
     for (var site in Sites.supportSites) {

@@ -472,6 +472,62 @@ mixin PlayerSystemMixin on PlayerMixin, PlayerStateMixin, PlayerDanmakuMixin {
 }
 mixin PlayerGestureControlMixin
     on PlayerStateMixin, PlayerMixin, PlayerSystemMixin {
+  /// 当前缩放倍数
+  var videoScale = 1.0.obs;
+
+  /// 缩放平移偏移
+  var videoOffset = Offset.zero.obs;
+
+  /// 是否正在缩放手势中
+  bool _isScaling = false;
+
+  double _baseScale = 1.0;
+  Offset _baseOffset = Offset.zero;
+  Offset _focalPoint = Offset.zero;
+
+  /// 重置视频缩放
+  void resetVideoScale() {
+    videoScale.value = 1.0;
+    videoOffset.value = Offset.zero;
+  }
+
+  /// 缩放手势开始
+  void onScaleStart(ScaleStartDetails details) {
+    _isScaling = true;
+    _baseScale = videoScale.value;
+    _baseOffset = videoOffset.value;
+    _focalPoint = details.focalPoint;
+  }
+
+  /// 缩放手势更新
+  void onScaleUpdate(ScaleUpdateDetails details) {
+    if (!_isScaling) return;
+    // 限制只识别双指缩放 (scale != 1.0 时为多指)
+    var newScale = (_baseScale * details.scale).clamp(1.0, 5.0);
+    videoScale.value = newScale;
+
+    // 计算焦点偏移
+    var delta = details.focalPoint - _focalPoint;
+    _focalPoint = details.focalPoint;
+
+    if (newScale > 1.0) {
+      var newOffset = _baseOffset * (newScale / _baseScale) + delta;
+      videoOffset.value = newOffset;
+    } else {
+      videoOffset.value = Offset.zero;
+    }
+  }
+
+  /// 缩放手势结束
+  void onScaleEnd(ScaleEndDetails details) {
+    _isScaling = false;
+    // 缩放回 1.0 时重置偏移
+    if (videoScale.value <= 1.01) {
+      videoScale.value = 1.0;
+      videoOffset.value = Offset.zero;
+    }
+  }
+
   /// 单击显示/隐藏控制器
   void onTap() {
     if (showControlsState.value) {
