@@ -12,7 +12,7 @@ import 'package:simple_live_app/app/utils.dart';
 import 'package:simple_live_app/modules/live_room/live_room_controller.dart';
 import 'package:simple_live_app/modules/settings/danmu_settings_page.dart';
 import 'package:simple_live_app/services/follow_service.dart';
-import 'package:simple_live_app/services/screen_recorder_service.dart';
+import 'package:simple_live_app/services/live_stream_recorder_service.dart';
 import 'package:simple_live_app/widgets/desktop_refresh_button.dart';
 import 'package:simple_live_app/widgets/follow_user_item.dart';
 import 'package:window_manager/window_manager.dart';
@@ -179,19 +179,19 @@ Widget buildFullControls(
                       size: 24,
                     ),
                   ),
-                  // 录屏(仅安卓端)
+                  // 录制直播流(仅安卓端)
                   Visibility(
                     visible: Platform.isAndroid,
                     child: Obx(
                       () => IconButton(
                         onPressed: () {
-                          ScreenRecorderService.instance.toggle();
+                          LiveStreamRecorderService.instance.toggle();
                         },
                         icon: Icon(
-                          ScreenRecorderService.instance.isRecording.value
+                          LiveStreamRecorderService.instance.isRecording.value
                               ? Icons.stop_circle_outlined
                               : Icons.fiber_manual_record,
-                          color: ScreenRecorderService.instance.isRecording.value
+                          color: LiveStreamRecorderService.instance.isRecording.value
                               ? Colors.red
                               : Colors.white,
                           size: 24,
