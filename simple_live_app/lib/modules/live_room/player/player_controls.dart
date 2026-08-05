@@ -88,6 +88,10 @@ Widget buildFullControls(
               }
               showFollowUser(controller);
             },
+            // 全屏双指缩放：缩放手势由 controls 层统一处理，避免与播放器内部手势冲突
+            onScaleStart: controller.onScaleStart,
+            onScaleUpdate: controller.onScaleUpdate,
+            onScaleEnd: controller.onScaleEnd,
 
             child: MouseRegion(
               onHover: (PointerHoverEvent event) {

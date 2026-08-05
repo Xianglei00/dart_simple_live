@@ -271,23 +271,18 @@ class LiveRoomPage extends GetView<LiveRoomController> {
     );
     return Stack(
       children: [
-        // 全屏时外层包裹缩放手势，覆盖整个播放器区域（含 controls 层）
+        // 全屏时对视频应用缩放变换，缩放手势由 playerControls 内部处理
         if (controller.fullScreenState.value)
-          GestureDetector(
-            onScaleStart: controller.onScaleStart,
-            onScaleUpdate: controller.onScaleUpdate,
-            onScaleEnd: controller.onScaleEnd,
-            child: Obx(() {
-              return Transform(
-                alignment: Alignment.center,
-                transform: Matrix4.identity()
-                  ..translate(
-                      controller.videoOffset.value.dx, controller.videoOffset.value.dy)
-                  ..scale(controller.videoScale.value),
-                child: videoChild,
-              );
-            }),
-          )
+          Obx(() {
+            return Transform(
+              alignment: Alignment.center,
+              transform: Matrix4.identity()
+                ..translate(
+                    controller.videoOffset.value.dx, controller.videoOffset.value.dy)
+                ..scale(controller.videoScale.value),
+              child: videoChild,
+            );
+          })
         else
           videoChild,
         Obx(

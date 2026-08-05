@@ -4,11 +4,9 @@ import 'package:flutter/material.dart';
 
 import 'package:get/get.dart';
 import 'package:simple_live_app/app/constant.dart';
-import 'package:simple_live_app/app/log.dart';
 import 'package:simple_live_app/app/sites.dart';
 import 'package:simple_live_app/modules/search/search_list_controller.dart';
 import 'package:simple_live_app/routes/app_navigation.dart';
-import 'package:simple_live_core/simple_live_core.dart';
 
 class AppSearchController extends GetxController
     with GetSingleTickerProviderStateMixin {
@@ -55,7 +53,7 @@ class AppSearchController extends GetxController
     super.onInit();
   }
 
-  /// 尝试解析抖音直播间链接或房间号，成则直接跳转并返回 true
+  /// 尝试解析抖音直播间链接或房间号，成功则直接跳转并返回 true
   bool _tryOpenDouyinLink(String input) {
     var text = input.trim();
     var douyinSite = Sites.allSites[Constant.kDouyin];
@@ -77,38 +75,14 @@ class AppSearchController extends GetxController
       return true;
     }
 
-    // 当前 Tab 为抖音时，支持通过抖音号直达直播间
-    // 抖音号一般为字母开头、字母数字组合（如 abc123）
-    // 找到正在直播的直播间则直接进入；否则不拦截，走普通搜索
-    if (Sites.supportSites[index].id == Constant.kDouyin &&
-        RegExp(r'^[a-zA-Z][a-zA-Z0-9_.-]{0,29}$').hasMatch(text)) {
-      _tryOpenByDouyinId(text, douyinSite);
-    }
-
     return false;
-  }
-
-  /// 通过抖音号查询直播间，找到正在直播的直播间则直接进入
-  Future<void> _tryOpenByDouyinId(String douyinId, Site douyinSite) async {
-    try {
-      var douyin = douyinSite.liveSite as DouyinSite;
-      var items = await douyin.searchLiveRoomByDouyinId(douyinId);
-      if (items.isNotEmpty) {
-        AppNavigator.toLiveRoomDetail(
-          site: douyinSite,
-          roomId: items.first.roomId,
-        );
-      }
-    } catch (e) {
-      Log.logPrint("抖音号直达失败: $e");
-    }
   }
 
   void doSearch() {
     if (searchController.text.isEmpty) {
       return;
     }
-    // 尝试识别抖音直播间链接
+    // 尝试识别抖音直播间链接或房间号
     if (_tryOpenDouyinLink(searchController.text)) {
       return;
     }
