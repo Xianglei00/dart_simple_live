@@ -14,6 +14,7 @@ import 'package:simple_live_app/app/utils.dart';
 import 'package:simple_live_app/modules/live_room/live_room_controller.dart';
 import 'package:simple_live_app/modules/live_room/player/player_controls.dart';
 import 'package:simple_live_app/services/follow_service.dart';
+import 'package:simple_live_app/services/screen_recorder_service.dart';
 import 'package:simple_live_app/widgets/desktop_refresh_button.dart';
 import 'package:simple_live_app/widgets/follow_user_item.dart';
 import 'package:simple_live_app/widgets/keep_alive_wrapper.dart';
@@ -854,6 +855,32 @@ class LiveRoomPage extends GetView<LiveRoomController> {
               onTap: () {
                 controller.saveScreenshot();
               },
+            ),
+            // 录屏(仅安卓端)
+            Visibility(
+              visible: Platform.isAndroid,
+              child: Obx(
+                () => ListTile(
+                  leading: Icon(
+                    ScreenRecorderService.instance.isRecording.value
+                        ? Icons.stop_circle_outlined
+                        : Icons.fiber_manual_record,
+                    color: ScreenRecorderService.instance.isRecording.value
+                        ? Colors.red
+                        : null,
+                  ),
+                  title: Text(
+                    ScreenRecorderService.instance.isRecording.value
+                        ? "停止录屏(${ScreenRecorderService.instance.recordTimeText})"
+                        : "录屏",
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Get.back();
+                    ScreenRecorderService.instance.toggle();
+                  },
+                ),
+              ),
             ),
             Visibility(
               visible: Platform.isAndroid,

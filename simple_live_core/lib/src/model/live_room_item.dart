@@ -15,12 +15,20 @@ class LiveRoomItem {
 
   /// 人气/在线人数
   final int online;
+
+  /// 抖音号(unique_id)，仅抖音平台有值
+  final String? uniqueId;
+
+  /// 主播 secUid，仅抖音平台有值
+  final String? secUid;
   LiveRoomItem({
     required this.roomId,
     required this.title,
     required this.cover,
     required this.userName,
     this.online = 0,
+    this.uniqueId,
+    this.secUid,
   });
 
   @override
@@ -31,6 +39,8 @@ class LiveRoomItem {
       "cover": cover,
       "userName": userName,
       "online": online,
+      "uniqueId": uniqueId,
+      "secUid": secUid,
     });
   }
 }

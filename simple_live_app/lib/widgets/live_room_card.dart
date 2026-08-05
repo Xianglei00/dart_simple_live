@@ -87,11 +87,23 @@ class LiveRoomCard extends StatelessWidget {
           ),
           Padding(
             padding: AppStyle.edgeInsetsH8.copyWith(bottom: 8),
-            child: Text(
-              item.userName,
-              maxLines: 1,
-              style: const TextStyle(
-                  height: 1.4, fontSize: 12, color: Colors.grey),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.userName,
+                  maxLines: 1,
+                  style: const TextStyle(
+                      height: 1.4, fontSize: 12, color: Colors.grey),
+                ),
+                if (item.uniqueId != null && item.uniqueId!.isNotEmpty)
+                  Text(
+                    "抖音号: ${item.uniqueId}",
+                    maxLines: 1,
+                    style: const TextStyle(
+                        height: 1.4, fontSize: 11, color: Colors.grey),
+                  ),
+              ],
             ),
           )
         ],

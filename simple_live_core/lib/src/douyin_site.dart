@@ -726,16 +726,226 @@ class DouyinSite implements LiveSite {
     var items = <LiveRoomItem>[];
     for (var item in result["data"] ?? []) {
       var itemData = json.decode(item["lives"]["rawdata"].toString());
+      var ownerData = itemData["owner"] ?? {};
+      var coverList = itemData["cover"]?["url_list"] as List? ?? [];
       var roomItem = LiveRoomItem(
-        roomId: itemData["owner"]["web_rid"].toString(),
-        title: itemData["title"].toString(),
-        cover: itemData["cover"]["url_list"][0].toString(),
-        userName: itemData["owner"]["nickname"].toString(),
-        online: int.tryParse(itemData["stats"]["total_user"].toString()) ?? 0,
+        roomId: itemData["owner"]?["web_rid"]?.toString() ?? "",
+        title: itemData["title"]?.toString() ?? "",
+        cover: coverList.isNotEmpty ? coverList.first.toString() : "",
+        userName: itemData["owner"]?["nickname"]?.toString() ?? "",
+        online:
+            int.tryParse(
+              itemData["stats"]?["total_user"]?.toString() ?? "0",
+            ) ??
+            0,
+        uniqueId: ownerData["unique_id"]?.toString(),
+        secUid: ownerData["sec_uid"]?.toString(),
       );
       items.add(roomItem);
     }
+
+    // 抖音号精确匹配的结果置顶显示
+    if (keyword.trim().isNotEmpty) {
+      var kw = keyword.trim().toLowerCase();
+      items.sort((a, b) {
+        var aMatch = (a.uniqueId ?? "").toLowerCase() == kw ||
+            a.userName.toLowerCase() == keyword.trim().toLowerCase();
+        var bMatch = (b.uniqueId ?? "").toLowerCase() == kw ||
+            b.userName.toLowerCase() == keyword.trim().toLowerCase();
+        if (aMatch && !bMatch) return -1;
+        if (bMatch && !aMatch) return 1;
+        return 0;
+      });
+    }
+
+    // 搜索结果为空时，尝试通过抖音号搜索直播间（尽力而为）
+    if (items.isEmpty && page == 1) {
+      var douyinIdItems = await searchLiveRoomByDouyinId(keyword);
+      items.addAll(douyinIdItems);
+    }
     return LiveSearchRoomResult(hasMore: items.length >= 10, items: items);
+  }
+
+  /// 通过抖音号搜索正在直播的用户（尽力而为）
+  /// 链路：抖音号 → 用户搜索接口获取 sec_uid → 用户主页接口查询开播状态
+  /// 抖音接口风控严格，失败时静默返回空列表，不影响主流程
+  Future<List<LiveRoomItem>> searchLiveRoomByDouyinId(String douyinId) async {
+    var keyword = douyinId.trim();
+    if (keyword.isEmpty) return [];
+    try {
+      var searchUri = Uri.parse(
+        "https://www.douyin.com/aweme/v1/web/discover/search/",
+      ).replace(
+        scheme: "https",
+        port: 443,
+        queryParameters: {
+          "device_platform": "webapp",
+          "aid": "6383",
+          "channel": "channel_pc_web",
+          "search_channel": "aweme_user",
+          "keyword": keyword,
+          "search_source": "normal_search",
+          "query_correct_type": "1",
+          "is_filter_search": "0",
+          "offset": "0",
+          "count": "10",
+          "pc_client_type": "1",
+          "version_code": "170400",
+          "version_name": "17.4.0",
+          "cookie_enabled": "true",
+          "screen_width": "1920",
+          "screen_height": "1080",
+          "browser_language": "zh-CN",
+          "browser_platform": "Win32",
+          "browser_name": "Edge",
+          "browser_version": "125.0.0.0",
+          "browser_online": "true",
+          "os_name": "Windows",
+          "os_version": "10",
+          "platform": "PC",
+        },
+      );
+      var requestUrl = DouyinSign.getAbogusUrl(
+        searchUri.toString(),
+        kDefaultUserAgent,
+      );
+      var result = await HttpClient.instance.getJson(
+        requestUrl,
+        header: {
+          ...await getRequestHeaders(),
+          "accept": 'application/json, text/plain, */*',
+          "referer": 'https://www.douyin.com/',
+        },
+      );
+      if (result is! Map || result["status_code"] != 0) {
+        return [];
+      }
+
+      var userList = (result["data"]?["user_list"] as List?) ?? [];
+      if (userList.isEmpty) return [];
+
+      // 优先精确匹配抖音号
+      var matched = <Map>[];
+      var others = <Map>[];
+      for (var item in userList) {
+        var userInfo = (item as Map?)?["user_info"] as Map?;
+        if (userInfo == null) continue;
+        var uId = userInfo["unique_id"]?.toString() ?? "";
+        var avatarList = userInfo["avatar_thumb"]?["url_list"] as List? ?? [];
+        var entry = <String, dynamic>{
+          "uniqueId": uId,
+          "secUid": userInfo["sec_uid"]?.toString() ?? "",
+          "nickname": userInfo["nickname"]?.toString() ?? "",
+          "avatar": avatarList.isNotEmpty ? avatarList.first.toString() : "",
+        };
+        if (uId.toLowerCase() == keyword.toLowerCase()) {
+          matched.add(entry);
+        } else {
+          others.add(entry);
+        }
+      }
+      var users = [...matched, ...others];
+      if (users.isEmpty) return [];
+
+      // 逐个查询用户是否开播（最多查3个）
+      var items = <LiveRoomItem>[];
+      for (var user in users.take(3)) {
+        var secUid = user["secUid"]?.toString() ?? "";
+        if (secUid.isEmpty) continue;
+        var roomInfo = await _getLiveRoomInfoBySecUid(secUid);
+        if (roomInfo == null) continue;
+        items.add(
+          LiveRoomItem(
+            roomId: roomInfo["roomId"]!.toString(),
+            title: roomInfo["title"]?.toString() ?? "",
+            cover: roomInfo["cover"]?.toString() ?? "",
+            userName:
+                roomInfo["userName"]?.toString() ?? user["nickname"]?.toString() ?? "",
+            online:
+                int.tryParse(roomInfo["online"]?.toString() ?? "0") ?? 0,
+            uniqueId: user["uniqueId"]?.toString(),
+            secUid: secUid,
+          ),
+        );
+      }
+      return items;
+    } catch (e) {
+      CoreLog.error("抖音号搜索失败: $e");
+      return [];
+    }
+  }
+
+  /// 通过 secUid 查询用户主页，返回正在直播的直播间信息（未开播返回 null）
+  Future<Map<String, dynamic>?> _getLiveRoomInfoBySecUid(String secUid) async {
+    try {
+      var uri = Uri.parse(
+        "https://www.douyin.com/aweme/v1/web/user/profile/other/",
+      ).replace(
+        scheme: "https",
+        port: 443,
+        queryParameters: {
+          "device_platform": "webapp",
+          "aid": "6383",
+          "channel": "channel_pc_web",
+          "sec_user_id": secUid,
+          "max_cursor": "0",
+          "count": "10",
+          "pc_client_type": "1",
+          "version_code": "170400",
+          "version_name": "17.4.0",
+          "cookie_enabled": "true",
+          "platform": "PC",
+        },
+      );
+      var requestUrl = DouyinSign.getAbogusUrl(
+        uri.toString(),
+        kDefaultUserAgent,
+      );
+      var result = await HttpClient.instance.getJson(
+        requestUrl,
+        header: {
+          ...await getRequestHeaders(),
+          "accept": 'application/json, text/plain, */*',
+          "referer": 'https://www.douyin.com/',
+        },
+      );
+      if (result is! Map || result["status_code"] != 0) {
+        return null;
+      }
+      var user = result["data"]?["user"] as Map?;
+      if (user == null) return null;
+
+      // 开播时 user.room_data 存在
+      var roomData = user["room_data"] as Map?;
+      if (roomData == null) return null;
+      var room = roomData["room"] as Map? ?? roomData;
+
+      // 仅返回直播中的房间（status == 2）
+      var status = int.tryParse(room["status"]?.toString() ?? "0") ?? 0;
+      if (status != 2) return null;
+
+      var roomId = room["id_str"]?.toString() ?? "";
+      var webRid = room["web_rid"]?.toString() ?? "";
+      if (roomId.isEmpty && webRid.isEmpty) return null;
+
+      var coverList = room["cover"]?["url_list"] as List? ?? [];
+      var owner = room["owner"] as Map? ?? user;
+      var stats = room["room_view_stats"] as Map? ?? {};
+
+      return {
+        "roomId": webRid.isNotEmpty ? webRid : roomId,
+        "title": room["title"]?.toString() ?? "",
+        "cover": coverList.isNotEmpty ? coverList.first.toString() : "",
+        "userName":
+            owner["nickname"]?.toString() ??
+            user["nickname"]?.toString() ??
+            "",
+        "online": stats["display_value"]?.toString() ?? "0",
+      };
+    } catch (e) {
+      CoreLog.error("查询用户开播状态失败: $e");
+      return null;
+    }
   }
 
   @override

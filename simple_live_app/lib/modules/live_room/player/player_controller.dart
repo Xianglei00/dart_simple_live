@@ -481,9 +481,12 @@ mixin PlayerGestureControlMixin
   /// 是否正在缩放手势中
   bool _isScaling = false;
 
+  /// 最大缩放倍数
+  static const double maxVideoScale = 5.0;
+
   double _baseScale = 1.0;
   Offset _baseOffset = Offset.zero;
-  Offset _focalPoint = Offset.zero;
+  Offset _startFocalPoint = Offset.zero;
 
   /// 重置视频缩放
   void resetVideoScale() {
@@ -493,29 +496,45 @@ mixin PlayerGestureControlMixin
 
   /// 缩放手势开始
   void onScaleStart(ScaleStartDetails details) {
+    if (!fullScreenState.value) {
+      return;
+    }
     _isScaling = true;
     _baseScale = videoScale.value;
     _baseOffset = videoOffset.value;
-    _focalPoint = details.focalPoint;
+    _startFocalPoint = details.focalPoint;
+    // 缩放时隐藏控制条，避免遮挡画面
+    if (showControlsState.value) {
+      hideControls();
+    }
   }
 
   /// 缩放手势更新
   void onScaleUpdate(ScaleUpdateDetails details) {
     if (!_isScaling) return;
-    // 限制只识别双指缩放 (scale != 1.0 时为多指)
-    var newScale = (_baseScale * details.scale).clamp(1.0, 5.0);
-    videoScale.value = newScale;
+    var newScale = (_baseScale * details.scale).clamp(1.0, maxVideoScale);
 
-    // 计算焦点偏移
-    var delta = details.focalPoint - _focalPoint;
-    _focalPoint = details.focalPoint;
+    // 以手势焦点为中心缩放，保持焦点下的内容位置不变
+    // 变换模型: position = offset + scale * (contentPoint - center) + center
+    var center = Offset(Get.width / 2, Get.height / 2);
+    var contentPoint = (_startFocalPoint - center - _baseOffset) / _baseScale;
+    var newOffset = details.focalPoint - center - newScale * contentPoint;
 
-    if (newScale > 1.0) {
-      var newOffset = _baseOffset * (newScale / _baseScale) + delta;
-      videoOffset.value = newOffset;
+    if (newScale <= 1.001) {
+      // 缩放回 1.0 时重置偏移
+      newOffset = Offset.zero;
     } else {
-      videoOffset.value = Offset.zero;
+      // 限制平移范围，防止画面被拖出屏幕
+      var maxDx = Get.width * (newScale - 1) / 2;
+      var maxDy = Get.height * (newScale - 1) / 2;
+      newOffset = Offset(
+        newOffset.dx.clamp(-maxDx, maxDx),
+        newOffset.dy.clamp(-maxDy, maxDy),
+      );
     }
+
+    videoScale.value = newScale;
+    videoOffset.value = newOffset;
   }
 
   /// 缩放手势结束
