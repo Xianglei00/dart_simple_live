@@ -1,14 +1,14 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter_screen_recording/flutter_screen_recording.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 /// 安卓端录屏服务
-/// 基于系统 MediaProjection 录制屏幕，Android 10+ 可录制内部音频（直播声音）
+/// 基于系统 MediaProjection 录制屏幕，同时录制麦克风声音
+/// （可录到直播外放的声音，无需耳机场景）
 /// 录制的视频保存在系统 Movies/ScreenRecordings 目录，相册可见
 class ScreenRecorderService extends GetxService {
   static ScreenRecorderService get instance =>
@@ -47,24 +47,25 @@ class ScreenRecorderService extends GetxService {
       return false;
     }
 
+    // 麦克风权限（录制声音需要）
+    var micStatus = await Permission.microphone.status;
+    if (micStatus.isDenied || micStatus.isPermanentlyDenied) {
+      micStatus = await Permission.microphone.request();
+    }
+    if (micStatus.isDenied) {
+      SmartDialog.showToast("需要麦克风权限才能录制声音");
+      return false;
+    }
+
     var name = "simple_live_${DateTime.now().millisecondsSinceEpoch}";
     var started = false;
     try {
-      if (await _isAndroid10Plus()) {
-        // Android 10+ 录制内部音频（直播声音）
-        started = await FlutterScreenRecording.startRecordScreenWithInternalAudio(
-          name,
-          titleNotification: "Simple Live 录屏中",
-          messageNotification: "正在录制直播画面",
-        );
-      } else {
-        // 低版本仅录制画面
-        started = await FlutterScreenRecording.startRecordScreen(
-          name,
-          titleNotification: "Simple Live 录屏中",
-          messageNotification: "正在录制直播画面",
-        );
-      }
+      // 录制屏幕 + 麦克风声音
+      started = await FlutterScreenRecording.startRecordScreenAndAudio(
+        name,
+        titleNotification: "Simple Live 录屏中",
+        messageNotification: "正在录制直播画面",
+      );
     } catch (e) {
       SmartDialog.showToast("录屏启动失败");
       return false;
@@ -84,7 +85,9 @@ class ScreenRecorderService extends GetxService {
     return started;
   }
 
-  /// 停止录屏，返回视频文件路径
+  /// 停止录屏
+  /// 注意：flutter_screen_recording 2.0.25 停止时可能拿不到文件路径，
+  /// 但视频文件本身会正常保存到系统 Movies/ScreenRecordings 目录
   Future<String?> stop() async {
     if (!isRecording.value) return null;
     _timer?.cancel();
@@ -92,12 +95,14 @@ class ScreenRecorderService extends GetxService {
     try {
       path = await FlutterScreenRecording.stopRecordScreen;
     } catch (e) {
-      SmartDialog.showToast("停止录屏失败");
+      // 忽略，录屏文件仍会保存
     }
     isRecording.value = false;
     recordSeconds.value = 0;
     if (path.isNotEmpty) {
       SmartDialog.showToast("录屏已保存：$path");
+    } else {
+      SmartDialog.showToast("录屏已保存至系统相册（Movies/ScreenRecordings）");
     }
     return path.isEmpty ? null : path;
   }
@@ -108,15 +113,6 @@ class ScreenRecorderService extends GetxService {
       await stop();
     } else {
       await start();
-    }
-  }
-
-  Future<bool> _isAndroid10Plus() async {
-    try {
-      var info = await DeviceInfoPlugin().androidInfo;
-      return info.version.sdkInt >= 29;
-    } catch (e) {
-      return false;
     }
   }
 
