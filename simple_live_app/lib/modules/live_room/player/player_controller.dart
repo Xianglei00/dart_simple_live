@@ -512,13 +512,17 @@ mixin PlayerGestureControlMixin
   /// 缩放手势更新
   void onScaleUpdate(ScaleUpdateDetails details) {
     if (!_isScaling) return;
-    var newScale = (_baseScale * details.scale).clamp(1.0, maxVideoScale);
+    // clamp 返回 num，需要 toDouble() 转回 double，否则后续 Offset 运算报错
+    var newScale = (_baseScale * details.scale)
+        .clamp(1.0, maxVideoScale)
+        .toDouble();
 
     // 以手势焦点为中心缩放，保持焦点下的内容位置不变
     // 变换模型: position = offset + scale * (contentPoint - center) + center
     var center = Offset(Get.width / 2, Get.height / 2);
     var contentPoint = (_startFocalPoint - center - _baseOffset) / _baseScale;
-    var newOffset = details.focalPoint - center - newScale * contentPoint;
+    // 注意: Offset 只支持右乘 double，不能写成 newScale * contentPoint
+    var newOffset = details.focalPoint - center - contentPoint * newScale;
 
     if (newScale <= 1.001) {
       // 缩放回 1.0 时重置偏移
@@ -528,8 +532,8 @@ mixin PlayerGestureControlMixin
       var maxDx = Get.width * (newScale - 1) / 2;
       var maxDy = Get.height * (newScale - 1) / 2;
       newOffset = Offset(
-        newOffset.dx.clamp(-maxDx, maxDx),
-        newOffset.dy.clamp(-maxDy, maxDy),
+        newOffset.dx.clamp(-maxDx, maxDx).toDouble(),
+        newOffset.dy.clamp(-maxDy, maxDy).toDouble(),
       );
     }
 
