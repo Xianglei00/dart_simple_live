@@ -269,22 +269,28 @@ class LiveRoomPage extends GetView<LiveRoomController> {
       fit: boxFit,
       wakelock: false,
     );
-    return Stack(
-      children: [
-        // 全屏时对视频应用缩放变换，缩放手势由 playerControls 内部处理
-        if (controller.fullScreenState.value)
-          Obx(() {
-            return Transform(
-              alignment: Alignment.center,
-              transform: Matrix4.identity()
-                ..translate(
-                    controller.videoOffset.value.dx, controller.videoOffset.value.dy)
-                ..scale(controller.videoScale.value),
-              child: videoChild,
-            );
-          })
-        else
-          videoChild,
+    return Listener(
+      // 原始指针监听 — 绕开手势竞技场，双指缩放指哪打哪
+      onPointerDown: controller.onPointerDown,
+      onPointerMove: controller.onPointerMove,
+      onPointerUp: controller.onPointerUp,
+      onPointerCancel: controller.onPointerCancel,
+      child: Stack(
+        children: [
+          // 全屏时对视频应用缩放变换
+          if (controller.fullScreenState.value)
+            Obx(() {
+              return Transform(
+                alignment: Alignment.center,
+                transform: Matrix4.identity()
+                  ..translate(
+                      controller.videoOffset.value.dx, controller.videoOffset.value.dy)
+                  ..scale(controller.videoScale.value),
+                child: videoChild,
+              );
+            })
+          else
+            videoChild,
         Obx(
           () => Visibility(
             visible: !controller.liveStatus.value,
@@ -297,6 +303,7 @@ class LiveRoomPage extends GetView<LiveRoomController> {
           ),
         ),
       ],
+      ),
     );
   }
 

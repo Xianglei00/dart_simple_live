@@ -478,15 +478,16 @@ mixin PlayerGestureControlMixin
   /// 缩放平移偏移
   var videoOffset = Offset.zero.obs;
 
-  /// 是否正在缩放手势中
-  bool _isScaling = false;
-
   /// 最大缩放倍数
   static const double maxVideoScale = 5.0;
 
-  double _baseScale = 1.0;
-  Offset _baseOffset = Offset.zero;
-  Offset _startFocalPoint = Offset.zero;
+  // ---------- 原始指针缩放（绕开手势竞技场，指哪打哪） ----------
+  final Map<int, Offset> _activePointers = {};
+  bool _isPinching = false;
+  double _pinchBaseScale = 1.0;
+  Offset _pinchBaseOffset = Offset.zero;
+  Offset _pinchStartCenter = Offset.zero;
+  double _pinchBaseDistance = 0;
 
   /// 重置视频缩放
   void resetVideoScale() {
@@ -494,43 +495,63 @@ mixin PlayerGestureControlMixin
     videoOffset.value = Offset.zero;
   }
 
-  /// 缩放手势开始
-  void onScaleStart(ScaleStartDetails details) {
-    if (!fullScreenState.value) {
-      return;
+  /// 原始指针按下 — 双指开始缩放
+  void onPointerDown(PointerDownEvent event) {
+    _activePointers[event.pointer] = event.position;
+    if (_activePointers.length >= 2 && fullScreenState.value) {
+      _startPinch();
     }
-    _isScaling = true;
-    _baseScale = videoScale.value;
-    _baseOffset = videoOffset.value;
-    _startFocalPoint = details.focalPoint;
-    // 缩放时隐藏控制条，避免遮挡画面
+  }
+
+  void _startPinch() {
+    final pts = _activePointers.values.toList();
+    _pinchBaseDistance = (pts[0] - pts[1]).distance;
+    _pinchStartCenter = Offset(
+      (pts[0].dx + pts[1].dx) / 2,
+      (pts[0].dy + pts[1].dy) / 2,
+    );
+    _pinchBaseScale = videoScale.value;
+    _pinchBaseOffset = videoOffset.value;
+    _isPinching = true;
     if (showControlsState.value) {
       hideControls();
     }
   }
 
-  /// 缩放手势更新
-  void onScaleUpdate(ScaleUpdateDetails details) {
-    if (!_isScaling) return;
-    // clamp 返回 num，需要 toDouble() 转回 double，否则后续 Offset 运算报错
-    var newScale = (_baseScale * details.scale)
+  /// 原始指针移动 — 双指缩放/平移
+  void onPointerMove(PointerMoveEvent event) {
+    _activePointers[event.pointer] = event.position;
+    if (!_isPinching || _activePointers.length < 2) return;
+    _updatePinch();
+  }
+
+  void _updatePinch() {
+    final pts = _activePointers.values.toList();
+    final curDist = (pts[0] - pts[1]).distance;
+    if (_pinchBaseDistance < 1.0) return;
+
+    final scaleFactor = curDist / _pinchBaseDistance;
+    var newScale = (_pinchBaseScale * scaleFactor)
         .clamp(1.0, maxVideoScale)
         .toDouble();
 
-    // 以手势焦点为中心缩放，保持焦点下的内容位置不变
-    // 变换模型: position = offset + scale * (contentPoint - center) + center
-    var center = Offset(Get.width / 2, Get.height / 2);
-    var contentPoint = (_startFocalPoint - center - _baseOffset) / _baseScale;
-    // 注意: Offset 只支持右乘 double，不能写成 newScale * contentPoint
-    var newOffset = details.focalPoint - center - contentPoint * newScale;
+    // 当前两指中心点
+    final curCenter = Offset(
+      (pts[0].dx + pts[1].dx) / 2,
+      (pts[0].dy + pts[1].dy) / 2,
+    );
+
+    // 以 pin 起始中心为锚点做缩放 + 平移
+    final screenCenter = Offset(Get.width / 2, Get.height / 2);
+    final contentPoint =
+        (_pinchStartCenter - screenCenter - _pinchBaseOffset) / _pinchBaseScale;
+    var newOffset = curCenter - screenCenter - contentPoint * newScale;
 
     if (newScale <= 1.001) {
-      // 缩放回 1.0 时重置偏移
       newOffset = Offset.zero;
     } else {
-      // 限制平移范围，防止画面被拖出屏幕
-      var maxDx = Get.width * (newScale - 1) / 2;
-      var maxDy = Get.height * (newScale - 1) / 2;
+      final maxDx = Get.width * (newScale - 1) / 2;
+      final maxDy = Get.height * (newScale - 1) / 2;
       newOffset = Offset(
         newOffset.dx.clamp(-maxDx, maxDx).toDouble(),
         newOffset.dy.clamp(-maxDy, maxDy).toDouble(),
@@ -541,11 +562,24 @@ mixin PlayerGestureControlMixin
     videoOffset.value = newOffset;
   }
 
-  /// 缩放手势结束
-  void onScaleEnd(ScaleEndDetails details) {
-    _isScaling = false;
-    // 缩放回 1.0 时重置偏移
-    if (videoScale.value <= 1.01) {
+  /// 原始指针抬起 — 少于 2 指时结束缩放
+  void onPointerUp(PointerUpEvent event) {
+    _activePointers.remove(event.pointer);
+    if (_activePointers.length < 2 && _isPinching) {
+      _endPinch();
+    }
+  }
+
+  void onPointerCancel(PointerCancelEvent event) {
+    _activePointers.remove(event.pointer);
+    if (_activePointers.length < 2 && _isPinching) {
+      _endPinch();
+    }
+  }
+
+  void _endPinch() {
+    _isPinching = false;
+    if (videoScale.value <= 1.05) {
       videoScale.value = 1.0;
       videoOffset.value = Offset.zero;
     }
