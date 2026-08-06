@@ -64,9 +64,15 @@ class LiveStreamRecorderService extends GetxService {
       String streamUrl = urls[0].toString();
       Log.logPrint("[录制] 最高画质: ${bestQuality.quality}, FLV: $streamUrl");
 
-      // 构建保存路径
-      final dir = await getApplicationDocumentsDirectory();
-      final recordDir = Directory("${dir.path}/Recordings");
+      // 构建保存路径 → 下载目录，方便用户直接查看
+      String recordPath;
+      if (Platform.isAndroid) {
+        recordPath = "/storage/emulated/0/Download/SimpleLive";
+      } else {
+        final dir = await getApplicationDocumentsDirectory();
+        recordPath = "${dir.path}/Recordings";
+      }
+      final recordDir = Directory(recordPath);
       if (!await recordDir.exists()) {
         await recordDir.create(recursive: true);
       }
@@ -171,7 +177,7 @@ class LiveStreamRecorderService extends GetxService {
     if (path != null && File(path).existsSync()) {
       final size = File(path).lengthSync();
       final sizeMB = (size / 1024 / 1024).toStringAsFixed(1);
-      SmartDialog.showToast("录制已保存（${sizeMB}MB）");
+      SmartDialog.showToast("录制已保存至 Download/SimpleLive（${sizeMB}MB）");
       Log.logPrint("[录制] 已保存: $path (${sizeMB}MB)");
       return path;
     } else {
